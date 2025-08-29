@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Question {
   id: string
@@ -20,6 +20,7 @@ export default function QuizSection({ questions }: QuizSectionProps) {
   const [showResult, setShowResult] = useState(false)
   const [score, setScore] = useState(0)
   const [answered, setAnswered] = useState<boolean[]>(new Array(questions.length).fill(false))
+  const [showAnimation, setShowAnimation] = useState(false)
 
   const handleAnswer = (optionIndex: number) => {
     if (showResult) return
@@ -32,6 +33,8 @@ export default function QuizSection({ questions }: QuizSectionProps) {
     const isCorrect = selectedAnswer === questions[currentQuestion].correctAnswer
     if (isCorrect && !answered[currentQuestion]) {
       setScore(score + 1)
+      setShowAnimation(true)
+      setTimeout(() => setShowAnimation(false), 2000)
     }
     
     const newAnswered = [...answered]
@@ -65,118 +68,204 @@ export default function QuizSection({ questions }: QuizSectionProps) {
   }
 
   const question = questions[currentQuestion]
+  const progressPercent = ((currentQuestion + 1) / questions.length) * 100
+  const scorePercent = (score / questions.length) * 100
+
+  const getScoreEmoji = () => {
+    if (scorePercent >= 80) return '🏆'
+    if (scorePercent >= 60) return '👍'
+    if (scorePercent >= 40) return '💪'
+    return '📚'
+  }
+
+  const getScoreMessage = () => {
+    if (scorePercent >= 80) return '素晴らしい！'
+    if (scorePercent >= 60) return 'よくできました！'
+    if (scorePercent >= 40) return 'もう少し！'
+    return '復習しましょう！'
+  }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-gray-600">
-            問題 {currentQuestion + 1} / {questions.length}
-          </span>
-          <span className="text-sm font-semibold text-blue-600">
-            スコア: {score} / {questions.length}
-          </span>
+    <div className="bg-white rounded-2xl shadow-xl p-8 relative overflow-hidden">
+      {/* 背景装飾 */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-100 to-transparent rounded-bl-full opacity-50"></div>
+      
+      {/* アニメーション */}
+      {showAnimation && (
+        <div className="absolute inset-0 flex items-center justify-center z-50 bg-green-500 bg-opacity-20 animate-pulse">
+          <div className="text-6xl animate-bounce">🎉</div>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-blue-600 h-2 rounded-full transition-all"
-            style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
-          />
+      )}
+
+      {/* ヘッダー */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-2xl">📝</span>
+            <span className="text-lg font-bold text-gray-800">
+              問題 {currentQuestion + 1} / {questions.length}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-xl">{getScoreEmoji()}</span>
+            <span className="text-lg font-bold text-blue-600">
+              {score} / {questions.length}
+            </span>
+          </div>
+        </div>
+        
+        {/* プログレスバー */}
+        <div className="relative">
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div
+              className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="absolute right-0 top-4 text-sm text-gray-600">
+            {Math.round(progressPercent)}% 完了
+          </div>
         </div>
       </div>
 
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          {question.question}
-        </h3>
-        
-        <div className="space-y-3">
-          {question.options.map((option, index) => (
+      {/* 問題文 */}
+      <div className="mb-8">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100">
+          <h3 className="text-xl font-bold text-gray-800 mb-2 flex items-center">
+            <span className="text-2xl mr-2">🤔</span>
+            問題
+          </h3>
+          <p className="text-gray-700 leading-relaxed text-lg">
+            {question.question}
+          </p>
+        </div>
+      </div>
+      
+      {/* 選択肢 */}
+      <div className="space-y-4 mb-8">
+        {question.options.map((option, index) => {
+          const isSelected = selectedAnswer === index
+          const isCorrect = index === question.correctAnswer
+          const isWrong = showResult && isSelected && !isCorrect
+          
+          return (
             <button
               key={index}
               onClick={() => handleAnswer(index)}
-              className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                selectedAnswer === index
+              className={`group w-full text-left p-6 rounded-xl border-2 transition-all duration-300 transform hover:scale-102 ${
+                isSelected
                   ? showResult
-                    ? index === question.correctAnswer
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-red-500 bg-red-50'
-                    : 'border-blue-500 bg-blue-50'
-                  : showResult && index === question.correctAnswer
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                    ? isCorrect
+                      ? 'border-green-500 bg-green-50 shadow-green-100 shadow-lg'
+                      : 'border-red-500 bg-red-50 shadow-red-100 shadow-lg'
+                    : 'border-blue-500 bg-blue-50 shadow-blue-100 shadow-lg'
+                  : showResult && isCorrect
+                  ? 'border-green-500 bg-green-50 shadow-green-100 shadow-lg'
+                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:shadow-md'
               }`}
               disabled={showResult}
             >
               <div className="flex items-center">
-                <span className="mr-3 font-semibold">{index + 1}.</span>
-                <span>{option}</span>
-                {showResult && index === question.correctAnswer && (
-                  <span className="ml-auto text-green-600 font-semibold">正解</span>
-                )}
-                {showResult && selectedAnswer === index && index !== question.correctAnswer && (
-                  <span className="ml-auto text-red-600 font-semibold">不正解</span>
-                )}
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mr-4 ${
+                  isSelected
+                    ? showResult
+                      ? isCorrect
+                        ? 'bg-green-500'
+                        : 'bg-red-500'
+                      : 'bg-blue-500'
+                    : showResult && isCorrect
+                    ? 'bg-green-500'
+                    : 'bg-gray-400 group-hover:bg-blue-400'
+                }`}>
+                  {index + 1}
+                </div>
+                <span className="flex-1 text-gray-800">{option}</span>
+                <div className="flex-shrink-0 ml-4">
+                  {showResult && isCorrect && (
+                    <span className="text-green-600 font-bold flex items-center">
+                      ✓ 正解
+                    </span>
+                  )}
+                  {isWrong && (
+                    <span className="text-red-600 font-bold flex items-center">
+                      ✗ 不正解
+                    </span>
+                  )}
+                </div>
               </div>
             </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
+      {/* 解説 */}
       {showResult && (
-        <div className={`p-4 rounded-lg mb-4 ${
+        <div className={`mb-6 p-6 rounded-xl border-2 ${
           selectedAnswer === question.correctAnswer
-            ? 'bg-green-100 border border-green-300'
-            : 'bg-yellow-100 border border-yellow-300'
+            ? 'bg-green-50 border-green-200'
+            : 'bg-yellow-50 border-yellow-200'
         }`}>
-          <p className="font-semibold mb-2">
-            {selectedAnswer === question.correctAnswer ? '正解です！' : '不正解です'}
-          </p>
-          <p className="text-gray-700">{question.explanation}</p>
+          <div className="flex items-center mb-3">
+            <span className="text-2xl mr-2">
+              {selectedAnswer === question.correctAnswer ? '🎉' : '💡'}
+            </span>
+            <p className="text-lg font-bold">
+              {selectedAnswer === question.correctAnswer ? '正解です！' : '不正解です'}
+            </p>
+          </div>
+          <p className="text-gray-700 leading-relaxed">{question.explanation}</p>
         </div>
       )}
 
-      <div className="flex justify-between">
+      {/* ボタン */}
+      <div className="flex justify-between items-center">
         <button
           onClick={handlePrevious}
           disabled={currentQuestion === 0}
-          className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          前の問題
+          <span>←</span>
+          <span>前の問題</span>
         </button>
 
         {!showResult ? (
           <button
             onClick={handleSubmit}
             disabled={selectedAnswer === null}
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
           >
-            回答する
+            <span>✓</span>
+            <span>回答する</span>
           </button>
         ) : currentQuestion === questions.length - 1 ? (
           <button
             onClick={handleReset}
-            className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-xl hover:from-green-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
           >
-            もう一度挑戦
+            <span>🔄</span>
+            <span>もう一度挑戦</span>
           </button>
         ) : (
           <button
             onClick={handleNext}
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
           >
-            次の問題
+            <span>次の問題</span>
+            <span>→</span>
           </button>
         )}
       </div>
 
+      {/* 最終結果 */}
       {currentQuestion === questions.length - 1 && showResult && (
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg text-center">
-          <p className="text-lg font-semibold text-gray-800">
-            最終スコア: {score} / {questions.length}
+        <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200 text-center">
+          <div className="text-4xl mb-3">{getScoreEmoji()}</div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">{getScoreMessage()}</h3>
+          <p className="text-xl text-gray-700 mb-2">
+            最終スコア: <span className="font-bold text-blue-600">{score} / {questions.length}</span>
           </p>
-          <p className="text-gray-600 mt-1">
-            正答率: {Math.round((score / questions.length) * 100)}%
+          <p className="text-lg text-gray-600">
+            正答率: <span className="font-bold">{Math.round((score / questions.length) * 100)}%</span>
           </p>
         </div>
       )}
